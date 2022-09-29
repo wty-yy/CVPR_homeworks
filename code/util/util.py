@@ -25,6 +25,17 @@ def gauss(x, y, sigma, dim=2):
         return 1 / (2 * pi * sigma_2) * np.exp(-(x*x + y*y) / (2 * sigma_2))
     return 1 / (np.sqrt(2 * pi) * sigma) * np.exp(-(x*x) / (2 * sigma_2))
 
+def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k的高斯滤波器
+    n = 2 * k + 1
+    filter = np.zeros([n, n, 1])
+    for i in range(n):
+        for j in range(n):
+            if dim == 1 and i == k:
+                filter[i, j, 0] = gauss(j-k, 0, sigma=k/2, dim=1)
+            elif dim == 2:
+                filter[i, j, 0] = gauss(i-k, j-k, k/2)
+    return filter / np.sum(filter)
+
 def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向增加dy个像素
     n, m, o = img.shape
     lx = (dx + 1) // 2  # 左侧填充量(向上取整)
@@ -43,6 +54,8 @@ def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向�
     return new_img
 
 def conv(img, filter, mode=0):
+    if img.ndim == 2:
+        img = np.expand_dims(img, -1)
     n, m, o = img.shape
     a, b = filter.shape[0:2]
     output = np.zeros_like(img)

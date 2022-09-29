@@ -82,53 +82,69 @@ $$
 
 普通的高斯模糊只用到了图像**像素之间的距离关系**（空域），对每个像素使用相同的模糊处理，所以在图像的边缘部分处理效果不好. 而双边滤波器通过加入**像素值之间的关系**（值域），从而能较好的对边界部分进行处理.
 
-记图像为 $I$，$\boldsymbol{p},\boldsymbol{q}$ 为像素点对应的向量，$I_{\boldsymbol{p}}$ 表示图像中 $\boldsymbol{p}$ 点对应的像素值，$S$ 为滤波器的向量空间，$G_\sigma$ 表示标准差为 $\sigma$ 的高斯函数，$||\cdot||$ 表示2-范数，则双边滤波器为
+记图像为 $I$，$\boldsymbol{p},\boldsymbol{q}$ 为像素点对应的向量，$I_{\boldsymbol{p}}$ 表示图像中 $\boldsymbol{p}$ 点对应的像素值，$S$ 为滤波器的向量空间，$G_\sigma$ 表示标准差为 $\sigma$ 的高斯函数，$||\cdot||$ 表示2-范数，$W_p$ 表示对滤波器进行归一化处理（保持前后图像亮度一致），则双边滤波器为
 $$
-BF[I]_{\boldsymbol{p}} = \frac{1}{W_\boldsymbol{p}}\sum_{q\in S}G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)I_{\boldsymbol{q}}
+\begin{aligned}
+BF[I]_{\boldsymbol{p}} =&\ \frac{1}{W_\boldsymbol{p}}\sum_{q\in S}G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)I_{\boldsymbol{q}}\\
+W_\boldsymbol{p}=&\ \sum_{q\in S}G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)\quad(\text{归一化常数})
+\end{aligned}
 $$
-由上述公式可知，$G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)$ 为点 $\boldsymbol{p}$ 处的双边滤波器核，而 $G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)$ 就是高斯核，$G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)$ 是值域之差作用高斯函数后的核，两个核做内积即得到在点 $\boldsymbol{p}$ 处的双边滤波器核.
+由上述公式可知，$G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)$ 为点 $\boldsymbol{p}$ 处的双边滤波器核，而 $G_{\sigma_1}(||\boldsymbol{p}-\boldsymbol{q}||)$ 就是高斯核，$G_{\sigma_2}(|I_{\boldsymbol{p}}-I_{\boldsymbol{q}}|)$ 是值域之差作用高斯函数后的核，两个核做内积即得到在点 $\boldsymbol{p}$ 处的双边滤波器核，然后进行归一化处理.
 
-![image-20220927124431358](E:\Coding\CVPR\hw1\note.figure\双通道不同效果.png)
+![image-20220929110655556](./note.figure/双边滤波-黄鹤楼.png)
 
-![image-20220927124635645](E:\Coding\CVPR\hw1\note.figure\双通道-加入噪声.png)
+![image-20220929105613998](./note.figure/局部滤波效果3.png)
 
-![image-20220927124758636](E:\Coding\CVPR\hw1\note.figure\双通道-人脸1.png)
+![image-20220928111600999](./note.figure/局部滤波效果1.png)
 
-![image-20220927131522192](E:\Coding\CVPR\hw1\note.figure\双通道-人物2.png)
+![image-20220928111607469](./note.figure/局部滤波效果2.png)
 
-![image-20220927132524627](E:\Coding\CVPR\hw1\note.figure\双通道-建筑1.png)
+![image-20220928111331632](./note.figure/双通道不同效果-黄鹤楼.png)
+
+![image-20220928110857478](./note.figure/双边滤波-噪声.png)
+
+![image-20220927124758636](.\note.figure\双通道-人脸1.png)
+
+![image-20220927131522192](.\note.figure\双通道-人物2.png)
+
+![image-20220927132524627](.\note.figure\双通道-建筑1.png)
 
 ### 傅里叶变换
 
-在数分中，我们学过连续的傅里叶变换. 假设周期函数 $f(x)\in L^1(\R)$，周期为 $l$，则其对应的傅里叶积分为
+一般的二维傅里叶变换公式为
 $$
-\hat{f}(x) = \int_{\R}f(y)e^{-\frac{2\pi i}{l}xy}\,dy
+\hat{f}(u,v) = \iint_{\R^2}f(x, y)e^{-2\pi i(\frac{ux}{M}+\frac{vy}{N})}\,dxdy
 $$
-如果我们稍作改动，傅里叶变换在整点处的取值就变成傅里叶级数的系数了
-$$
-\mathcal{F}(f)(x) = \frac{1}{l}\int_0^lf(y)e^{-\frac{2\pi i}{l}xy}\,dy
-$$
-$f$ 表示为傅里叶级数的形式
-$$
-f(x) = \sum_{|n|\in\Z}c_ne^{\frac{2\pi i}{l}nx} = \frac{a_0}{2}+\sum_{n=1}^\infty(a_n\cos\frac{2\pi nx}{l}+b_n\sin(\frac{2\pi nx}{l}))
-$$
-其中 $a_n = \frac{2}{l}\int_0^lf(x)\cos\frac{2\pi nx}{l}\,dx,\ n\geq 0$，$b_n = \frac{2}{l}\int_0^lf(x)\sin\frac{2\pi nx}{l}\,dx,\ m\geq 0$，
-$$
-c_n = \frac{1}{l}\int_0^lf(x)e(-\frac{n}{l}x)\, dx = \mathcal{F}(f)(x)
-$$
-
-其中 $e(t) = e^{2\pi it}$.
-
-#### 离散傅里叶变换
-
-$$
-F(f)(x) = \frac{1}{N}\sum_{n=0}^{N-1}f(x)e()
-$$
-
-
+可以形象的理解为将图像 $f(x,y)$ 向**不同平面不同方向**的复平面波做内积，也即是求在 $e^{-2\pi i(ux+vy)}$ 上的投影.
 
 #### 可视化
 
 幅度谱和相位谱
 
+注：幅度谱输出需要用线性变换将像素压缩到 $[0,1]$ 中.
+
+![image-20220928184027970](./note.figure/幅度谱与相位谱.png)
+
+我们将二维傅里叶变化后的空间称为 $K$ 空间，则 $K$ 空间中每一个像素表示一种二维正弦波，则 $K_{u,v}$ 处的夹角表示该种正弦波的相位大小，$|K_{u,v}|$ 表示该正弦波的幅度大小.
+
+如果 $K$ 空间的相位全部等于0，那么相当于平面波在相加的时候，都没有移动，所以图像一定会呈现一种周期性，而且中间的点一点很亮. 这是因为复平面波没有移动，那么所有的平面波在中心点相位为0，$\exp(0)=1$，因此相当于所有的幅度叠加在一起了.
+
+如果使得 $K$ 空间的幅度全部等于1，那么相当于平面波在相加的时候，只有移动，而没有了各个波的大小信息，低频成分和高频成分全都一样了，所以图像应该比较嘈杂，变化比较剧烈，但是能看见大体的轮廓. （由于相位图逆变换结果只有少数像素值，只能将像素值相对高一些的提高亮度，否则特征十分不明显）
+
+![image-20220928171151818](./note.figure/幅度图和相位图做逆变换.png)
+
+![image-20220929122333693](./note.figure/幅度图和相位图做逆变换-黄鹤楼.png)
+
+![image-20220928134400286](./note.figure/交换相位图与幅度图的效果.png)
+
 #### 频域滤波
+
+⾼斯滤波器进⾏图像的频率域滤波
+
+我们分别取 $K$ 空间中低频部分（也就是靠中间的部分）和高频部分（也就是靠近边缘的部分）分别进行傅里叶逆变换.
+
+![image-20220928175337377](./note.figure/低频域与高频域分离.png)
+
+![image-20220928180100479](./note.figure/gauss处理频域1.png)
+
+![image-20220928180752379](./note.figure/gauss处理频域2.png)

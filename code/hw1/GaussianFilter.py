@@ -13,19 +13,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 sys.path.append(os.path.split(sys.path[0])[0])  # 将上级目录加入到path中
-from util.draw_figure import draw, draw_some
-from util.util import gauss, padding, conv, img_open
-
-def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k的高斯滤波器
-    n = 2 * k + 1
-    filter = np.zeros([n, n, 1])
-    for i in range(n):
-        for j in range(n):
-            if dim == 1 and i == k:
-                filter[i, j, 0] = gauss(j-k, 0, sigma=k/2, dim=1)
-            elif dim == 2:
-                filter[i, j, 0] = gauss(i-k, j-k, k/2)
-    return filter / np.sum(filter)
+from util.draw_figure import draw_some
+from util.util import gauss, gauss_filter, padding, conv, img_open
 
 def DOG(img, sigma1, sigma2):
     k1, k2 = np.ceil(sigma1 * 2).astype(int), np.ceil(sigma2 * 2).astype(int)
@@ -65,18 +54,34 @@ def fft(img):
     ft = np.fft.fft2(img)
     ft_shift = np.fft.fftshift(ft)
     ift = np.abs(np.fft.ifft2(ft))
-    magnitude = np.abs(ft_shift)
-    phase = np.angle(ft_shift)
-    return [ft, ift, magnitude, phase]
+    magnitude = np.abs(ft_shift)  # 幅度谱
+    phase = np.angle(ft_shift)  # 相位谱
+    return [ft_shift, ift, magnitude, phase]
 
 def combine_magnitude_phase(magnitude, phase):
     ft = magnitude * np.exp(1j * phase)
     ift = np.abs(np.fft.ifft2(ft))
     return ift
 
+def ft_circle(ft_shift, r):
+    in_circle, out_circle = ft_shift.copy(), ft_shift.copy()
+    n, m = ft_shift.shape
+    for i in range(n):
+        for j in range(m):
+            if np.linalg.norm((i-n/2, j-m/2)) < r:
+                out_circle[i, j] = 0
+            else:
+                in_circle[i, j] = 0
+    return in_circle, out_circle, np.fft.ifft2(in_circle), np.fft.ifft2(out_circle)
+
+def show_freq(img):
+    img = np.log(np.abs(img))
+    img = (img - img.min()) / (img.max() - img.min())
+    return img
+
 # img, img_gray = img_open('building.png')
-# img, img_gray = img_open('CrowTower_mini.png')
-img, img_gray = img_open('fox2.png')
+img, img_gray = img_open('CrowTower_mini.png')
+# img, img_gray = img_open('fox1.png')
 # 零填充效果
 # draw_some((img, '原图'), (padding(img, 100, 100), '零填充'))
 
@@ -114,9 +119,10 @@ img, img_gray = img_open('fox2.png')
 
 # 双边滤波
 # noise = np.clip(img_gray + np.random.normal(0, 0.1, img_gray.shape), 0, 1)
-# show_point = [(141, 260), (297, 261)]
+# show_point = [(141, 260), (297, 261), (467, 407)]
 # show_rock = [(66, 26), (186, 141)]
-# draw_some((img_gray, '原图'), (noise, 'Gauss噪声'), (bilateral(img_gray, 6, 0.1, show_point), '双边滤波'))
+# draw_some((bilateral(img_gray, 6, 0.2), '双边滤波'))
+# draw_some((img_gray, '原图'), (noise, 'Gauss噪声'), (bilateral(img_gray, 6, 0.2, show_point), '双边滤波'))
 # draw_some((img, '原图'), (bilateral(img, 6, 0.1), f'$\sigma_s={6},\sigma_r={0.1}$'))
 # sigma1 = [2, 6, 18]
 # sigma2 = [0.1, 0.25, 100]
@@ -131,6 +137,17 @@ fft1 = fft(img_gray)
 draw_some((img_gray, '原图'), (np.log(fft1[2]), '幅度谱', 'line'), (np.abs(fft1[3]), '相位谱', 'line'), (fft1[1], 'Fourier逆变换'))
 img2 = img_open('fox1.png')[1]
 fft2 = fft(img2)
+
 # draw_some((img2, '原图'), (np.log(fft2[2]), '幅度谱', 'line'), (np.abs(fft2[3]), '相位谱', 'line'), (fft2[1], 'Fourier逆变换'))
-draw_some((img_gray, '图1'), (combine_magnitude_phase(fft1[2], fft2[3]), '图1的幅度与图2的相位'),
-          (combine_magnitude_phase(fft2[2], fft1[3]), '图2的幅度与图1的相位'), (img2, '图2'))
+# draw_some((img_gray, '图1'), (combine_magnitude_phase(fft1[2], fft2[3]), '图1的幅度与图2的相位'),
+#           (combine_magnitude_phase(fft2[2], fft1[3]), '图2的幅度与图1的相位'), (img2, '图2'))
+draw_some((img_gray, '原图'), (np.fft.fftshift(combine_magnitude_phase(fft1[2], np.zeros_like(fft1[3]))), '幅度图逆变换'),
+          (combine_magnitude_phase(np.full_like(fft1[2], 1), fft1[3]), '相位图逆变换', 'upper'))
+# in_circle, out_circle, in_img, out_img = ft_circle(fft1[0], 50)
+# draw_some((img_gray, '原图'), (np.log(np.abs(in_circle)), '低频域', 'line'), (np.abs(in_img), '逆变换图像'),
+#           (np.log(np.abs(fft1[0])), '频域', 'line'), (np.log(np.abs(out_circle)), '高频域', 'line'), (np.abs(out_img), '逆变换图像'), shape=(2, 3))
+
+# filter = gauss_filter(3)
+# gauss_magnitude = conv(fft1[2], filter).squeeze()
+# draw_some((img_gray, '原图'), (show_freq(fft1[2]), '原频域'), (show_freq(gauss_magnitude), 'Gauss处理后'),
+#           (combine_magnitude_phase(gauss_magnitude, fft1[3]), '逆变换图像'))
