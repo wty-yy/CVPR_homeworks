@@ -36,6 +36,14 @@ def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k的高斯滤波器
                 filter[i, j, 0] = gauss(i-k, j-k, k/2)
     return filter / np.sum(filter)
 
+def gauss_filter_fixed(n, m, sigma):
+    mid_n, mid_m = n // 2, m // 2
+    filter = np.zeros([n, m, 1])
+    for i in range(n):
+        for j in range(m):
+            filter[i, j, 0] = gauss(i-mid_n, j-mid_m, sigma)
+    return filter / np.sum(filter)
+
 def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向增加dy个像素
     n, m, o = img.shape
     lx = (dx + 1) // 2  # 左侧填充量(向上取整)

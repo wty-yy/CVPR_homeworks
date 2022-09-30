@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 sys.path.append(os.path.split(sys.path[0])[0])  # 将上级目录加入到path中
 from util.draw_figure import draw_some
-from util.util import gauss, gauss_filter, padding, conv, img_open
+from util.util import *
 
 def DOG(img, sigma1, sigma2):
     k1, k2 = np.ceil(sigma1 * 2).astype(int), np.ceil(sigma2 * 2).astype(int)
@@ -134,15 +134,15 @@ img, img_gray = img_open('CrowTower_mini.png')
 
 # Fourier变换
 fft1 = fft(img_gray)
-draw_some((img_gray, '原图'), (np.log(fft1[2]), '幅度谱', 'line'), (np.abs(fft1[3]), '相位谱', 'line'), (fft1[1], 'Fourier逆变换'))
-img2 = img_open('fox1.png')[1]
-fft2 = fft(img2)
+# draw_some((img_gray, '原图'), (np.log(fft1[2]), '幅度谱', 'line'), (np.abs(fft1[3]), '相位谱', 'line'), (fft1[1], 'Fourier逆变换'))
+# img2 = img_open('fox1.png')[1]
+# fft2 = fft(img2)
 
 # draw_some((img2, '原图'), (np.log(fft2[2]), '幅度谱', 'line'), (np.abs(fft2[3]), '相位谱', 'line'), (fft2[1], 'Fourier逆变换'))
 # draw_some((img_gray, '图1'), (combine_magnitude_phase(fft1[2], fft2[3]), '图1的幅度与图2的相位'),
 #           (combine_magnitude_phase(fft2[2], fft1[3]), '图2的幅度与图1的相位'), (img2, '图2'))
-draw_some((img_gray, '原图'), (np.fft.fftshift(combine_magnitude_phase(fft1[2], np.zeros_like(fft1[3]))), '幅度图逆变换'),
-          (combine_magnitude_phase(np.full_like(fft1[2], 1), fft1[3]), '相位图逆变换', 'upper'))
+# draw_some((img_gray, '原图'), (np.fft.fftshift(combine_magnitude_phase(fft1[2], np.zeros_like(fft1[3]))), '幅度图逆变换'),
+#           (combine_magnitude_phase(np.full_like(fft1[2], 1), fft1[3]), '相位图逆变换', 'upper'))
 # in_circle, out_circle, in_img, out_img = ft_circle(fft1[0], 50)
 # draw_some((img_gray, '原图'), (np.log(np.abs(in_circle)), '低频域', 'line'), (np.abs(in_img), '逆变换图像'),
 #           (np.log(np.abs(fft1[0])), '频域', 'line'), (np.log(np.abs(out_circle)), '高频域', 'line'), (np.abs(out_img), '逆变换图像'), shape=(2, 3))
@@ -151,3 +151,8 @@ draw_some((img_gray, '原图'), (np.fft.fftshift(combine_magnitude_phase(fft1[2]
 # gauss_magnitude = conv(fft1[2], filter).squeeze()
 # draw_some((img_gray, '原图'), (show_freq(fft1[2]), '原频域'), (show_freq(gauss_magnitude), 'Gauss处理后'),
 #           (combine_magnitude_phase(gauss_magnitude, fft1[3]), '逆变换图像'))
+
+filter = gauss_filter_fixed(img.shape[0], img.shape[1], 100)[:, :, 0]
+gauss_fft = fft1[0] * filter
+draw_some((img_gray, '原图'), (show_freq(fft1[0]), '频域图'), (filter, 'NxM的$\sigma=100$的Gauss滤波器', 'clip'),
+          (show_freq(gauss_fft), 'Gauss处理后'), (show_freq(np.fft.ifft2(gauss_fft)), '逆变换'))
