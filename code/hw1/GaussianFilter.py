@@ -152,7 +152,9 @@ fft1 = fft(img_gray)
 # draw_some((img_gray, '原图'), (show_freq(fft1[2]), '原频域'), (show_freq(gauss_magnitude), 'Gauss处理后'),
 #           (combine_magnitude_phase(gauss_magnitude, fft1[3]), '逆变换图像'))
 
-filter = gauss_filter_fixed(img.shape[0], img.shape[1], 100)[:, :, 0]
-gauss_fft = fft1[0] * filter
-draw_some((img_gray, '原图'), (show_freq(fft1[0]), '频域图'), (filter, 'NxM的$\sigma=100$的Gauss滤波器', 'clip'),
-          (show_freq(gauss_fft), 'Gauss处理后'), (show_freq(np.fft.ifft2(gauss_fft)), '逆变换'))
+filter = gauss_filter_fixed(img.shape[0], img.shape[1], 5)[:, :, 0]
+filter_fft = np.fft.fftshift(np.fft.fft2(filter))
+draw_some((filter, 'Gauss'), (np.abs(filter_fft), 'fft'), (np.abs(np.fft.ifft2(filter_fft * fft1[0])), '逆变换'), (np.abs(np.fft.ifft2(np.abs(filter_fft) * fft1[0])), '逆变换'))
+# gauss_fft = fft1[0] * filter
+# draw_some((img_gray, '原图'), (show_freq(fft1[0]), '频域图'), (filter, 'NxM的$\sigma=100$的Gauss滤波器', 'clip'),
+#           (show_freq(gauss_fft), 'Gauss处理后'), (show_freq(np.fft.ifft2(gauss_fft)), '逆变换'))
