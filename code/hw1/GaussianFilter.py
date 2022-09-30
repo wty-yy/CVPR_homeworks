@@ -158,8 +158,9 @@ fft1 = fft(img_gray)
 # gauss_fft = fft1[0] * filter
 # draw_some((img_gray, '原图'), (show_freq(fft1[0]), '频域图'), (filter, 'NxM的$\sigma=100$的Gauss滤波器', 'clip'),
 #           (show_freq(gauss_fft), 'Gauss处理后'), (show_freq(np.fft.ifft2(gauss_fft)), '逆变换'))
-sigma = 100
+sigma = 10
 filter = gauss_filter_fixed(img.shape[0], img.shape[1], sigma)[:, :, 0]
 gauss_fft = fft1[0] * np.abs(filter)  # 对gauss变换后的实值做点积
 draw_some((img_gray, '原图'), (show_freq(fft1[0]), '频域图'), (filter, f'NxM的$\sigma={sigma}$的Gauss滤波器', 'clip'),
-          (show_freq(gauss_fft), 'Gauss处理后'), (np.abs(np.fft.ifft2(gauss_fft)), '逆变换'))
+          (np.abs(gauss_fft), 'Gauss处理后'), (np.abs(np.fft.ifft2(gauss_fft)), '逆变换'))
+# 当sigma=10较小时，使用np.abs进行幅度谱图像输出，sigma=100较大时，使用show_freq进行幅度谱输出
