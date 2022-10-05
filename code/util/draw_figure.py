@@ -35,9 +35,13 @@ def draw(ax, img, title, norm):
 
 def draw_some(*arg, shape=None):
     n = len(arg)
+    wide, height = 1e9, 1e9
+    for i in range(n):
+        height = min(height, arg[i][0].shape[0]/150)
+        wide = min(wide, arg[i][0].shape[1]/150)
     if shape is None:
         shape = [1, n]
-    fig, axes = plt.subplots(*shape, figsize=(3*shape[1], 3*shape[0]))
+    fig, axes = plt.subplots(*shape, figsize=(wide*shape[1], height*shape[0]))
     axes = np.array(axes).reshape([-1])
     for i in range(n):
         draw(axes[i], *(list(arg[i]) + (3 - len(arg[i])) * [None]))

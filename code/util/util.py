@@ -4,6 +4,17 @@
 @File    : util.py
 @Author  : wtyyy
 @Time    : 2022/9/26 8:33
+@Function:
+    img_open(fname): 打开图像文件，返回img, img_gray原图与灰度图
+    gauss(x, y, sigma, dim): 高斯函数，dim=1为一维高斯，dim=2为二维高斯
+    gauss_filter(k, dim=2): 高斯滤波器，大小为(2k+1)x(2k+1)，方差为sigma=k/2的高斯核
+    gauss_filter_fixed(n, m, sigma): 固定大小的高斯滤波器，大小为nxm，方差为sigma
+    padding(img, dx, dy, mode=0): 原始图像img，横向增加dx，纵向增加dy个像素
+        mode=0: 零填充
+        mode=1: 边界环绕
+        mode=2: 边界复制
+        mode=3: 镜像边界
+    cov(img, filter, mode=0): 卷积函数，原始图像img, 卷积核filter，mode=0等宽卷积（其他卷积还没用到）
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +28,6 @@ def img_open(fname):
     img_gray = img_gray.astype(np.float64) / 256
     return img, img_gray
 
-
 pi = np.pi
 def gauss(x, y, sigma, dim=2):
     sigma_2 = sigma * sigma
@@ -25,7 +35,7 @@ def gauss(x, y, sigma, dim=2):
         return 1 / (2 * pi * sigma_2) * np.exp(-(x*x + y*y) / (2 * sigma_2))
     return 1 / (np.sqrt(2 * pi) * sigma) * np.exp(-(x*x) / (2 * sigma_2))
 
-def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k的高斯滤波器
+def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k/2的高斯滤波器
     n = 2 * k + 1
     filter = np.zeros([n, n, 1])
     for i in range(n):
@@ -45,20 +55,57 @@ def gauss_filter_fixed(n, m, sigma):
     return filter / np.sum(filter)
 
 def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向增加dy个像素
+    # mode = 0: 零填充
+    # mode = 1: 边界环绕
+    # mode = 2: 边界复制
+    # mode = 3: 镜像边界
     n, m, o = img.shape
     lx = (dx + 1) // 2  # 左侧填充量(向上取整)
     uy = (dy + 1) // 2  # 上侧填充量(向上取整)
     new_img = np.zeros([n + dx, m + dy, o])
     for i in range(n + dx):
         for j in range(m + dy):
-            id1 = 0 if i < lx else (2 if i >= n + lx else 1)
-            id2 = 0 if j < uy else (2 if j >= m + uy else 1)
-            area = id2 * 3 + id1
-            if mode == 0:
-                if area != 4:
-                    new_img[i, j, :] = np.zeros(o)
+            id1 = -1 if i < lx else (1 if i >= n + lx else 0)
+            id2 = -1 if j < uy else (1 if j >= m + uy else 0)
+            # 将原始图像分为9个区域，编号为中间区域坐标为(0,0)，左上角区域坐标为(-1,-1)
+            # 除中间区域(0,0)外，其他区域为填充区域，根据不同要求进行填充
+            if (id1, id2) == (0, 0):
+                new_img[i, j, :] = img[i - lx, j - uy, :]
+                continue
+            if mode == 0:  # 零填充
+                new_img[i, j, :] = np.zeros(o)
+            elif mode == 1:  # 边界环绕，将图像进行平移
+                xx, yy = -id1 * n, -id2 * m
+                new_img[i, j, :] = img[i + xx - lx, j + yy - uy, :]
+            elif mode == 2 or mode == 3:
+                # 边界复制，直接拷贝边界处的像素值
+                # 边界镜像，以边界作为对称轴，两种方法都需要找到基准点
+                def symmetric(x, o):  # 对称中心o，当前向量x
+                    x = np.array(x)
+                    o = np.array(o)
+                    x1, x2 = (2 * o - x).tolist()
+                    return img[x1, x2, :]
+                if id1 * id2 != 0:
+                    id1 = max(0, id1) * (n-1)
+                    id2 = max(0, id2) * (m-1)
+                    if mode == 2:
+                        new_img[i, j, :] = img[id1, id2, :]
+                    else:
+                        new_img[i, j, :] = symmetric((i-lx, j-uy), (id1, id2))
                 else:
-                    new_img[i, j, :] = img[i-lx, j-uy, :]
+                    if id1 == 0:
+                        id2 = max(0, id2) * (m-1)
+                        if mode == 2:
+                            new_img[i, j, :] = img[i - lx, id2, :]
+                        else:
+                            new_img[i, j, :] = symmetric((i-lx, j-uy), (i-lx, id2))
+                    else:
+                        id1 = max(0, id1) * (n-1)
+                        if mode == 2:
+                            new_img[i, j, :] = img[id1, j - uy, :]
+                        else:
+                            new_img[i, j, :] = symmetric((i-lx, j-uy), (id1, j-uy))
+
     return new_img
 
 def conv(img, filter, mode=0):
