@@ -13,7 +13,7 @@ sys.path.append(os.path.split(sys.path[0])[0])
 from util.util import *
 from util.draw_figure import draw_some
 
-img, img_gray = img_open('../figure/fox2.png')
+img, img_gray = img_open('../figure/fox1.png')
 draw_some((img, '原图'), (padding(img, 200, 200, mode=0), '零填充'),
           (padding(img, 200, 200, mode=1), '边界环绕'),
           (padding(img, 200, 200, mode=2), '边界复制'),
