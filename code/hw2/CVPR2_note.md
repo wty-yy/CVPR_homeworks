@@ -24,15 +24,25 @@
 
 #### 完成上次未完成的填充操作
 
-![image-20221005161720351](./CVPR2_note.figure/image-20221005161720351.png)
+![image-20221005161720351](./CVPR2_note.figure/填充操作1.png)
 
-![image-20221005161754890](./CVPR2_note.figure/image-20221005161754890.png)
+![image-20221005161754890](./CVPR2_note.figure/填充操作2.png)
 
 ### 几何变换实验（5种变换）
 
+图像坐标系默认是按照左上角为原点，纵轴向下为 $x$ 轴正方向，横轴向右为 $y$ 轴正方向，为便于输出查看，变化后的图像保持与原图像相同的大小，但这样就会发生图像大部分空白，所以需要使用平移矩阵将变化后的图像中心保持在输出框的中心，具体来说，假设图像大小为 $N\times M$，几何变换为 $T$，记图像中心点为 $\boldsymbol{x}_{mid} = (N/2,M/2)$ ，则考虑平移向量和对应的平移矩阵为
+$$
+\boldsymbol{t} = \boldsymbol{x}_{mid} - T\boldsymbol{x}_{mid},\quad T_{translation}=\left[\begin{matrix}1&0&t_1\\ 0&1&t_2\\0&0&1\end{matrix}\right]
+$$
+为了保证输出效果，处平移操作和旋转操作外，其他操作都进行平移.
 
+![image-20221005212943808](./CVPR2_note.figure/几何变换实验.png)
 
 ### Gauss金字塔和Laplace金字塔
+
+Gauss金字塔：使用Gauss核与图像做卷积，设定Gauss核移动步长为stride=2，于是每次可将整个图像缩小 $1/4$ 倍.
+
+![image-20221005233059613](./CVPR2_note.figure/image-20221005233059613.png)
 
 讨论低通滤波和抽样频率的关系
 

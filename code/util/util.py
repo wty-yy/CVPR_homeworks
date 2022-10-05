@@ -59,10 +59,10 @@ def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向�
     # mode = 1: 边界环绕
     # mode = 2: 边界复制
     # mode = 3: 镜像边界
-    n, m, o = img.shape
+    n, m, c = img.shape
     lx = (dx + 1) // 2  # 左侧填充量(向上取整)
     uy = (dy + 1) // 2  # 上侧填充量(向上取整)
-    new_img = np.zeros([n + dx, m + dy, o])
+    new_img = np.zeros([n + dx, m + dy, c])
     for i in range(n + dx):
         for j in range(m + dy):
             id1 = -1 if i < lx else (1 if i >= n + lx else 0)
@@ -73,7 +73,7 @@ def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向�
                 new_img[i, j, :] = img[i - lx, j - uy, :]
                 continue
             if mode == 0:  # 零填充
-                new_img[i, j, :] = np.zeros(o)
+                new_img[i, j, :] = np.zeros(c)
             elif mode == 1:  # 边界环绕，将图像进行平移
                 xx, yy = -id1 * n, -id2 * m
                 new_img[i, j, :] = img[i + xx - lx, j + yy - uy, :]
@@ -105,21 +105,23 @@ def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向�
                             new_img[i, j, :] = img[id1, j - uy, :]
                         else:
                             new_img[i, j, :] = symmetric((i-lx, j-uy), (id1, j-uy))
-
     return new_img
 
-def conv(img, filter, mode=0):
+def conv(img, filter, mode=0, stride=1):
     if img.ndim == 2:
         img = np.expand_dims(img, -1)
-    n, m, o = img.shape
+    n, m, c = img.shape
     a, b = filter.shape[0:2]
-    output = np.zeros_like(img)
+    shape = np.array(img.shape).astype(int)
+    shape[0:2] //= stride
+    print(shape)
+    output = np.zeros(shape)
     if mode == 0:
         img = padding(img, a-1, b-1)
-    for i in range(n):
-        for j in range(m):
-            for k in range(o):
-                output[i, j, k] = np.sum(img[i:i+a, j:j+b, k] * filter[:,:,0])
+    for i in range(0,n,stride):
+        for j in range(0,m,stride):
+            for k in range(c):
+                output[i//stride, j//stride, k] = np.sum(img[i:i+a, j:j+b, k] * filter[:,:,0])
     return output
 
 def conv1(img, filter, mode=0):

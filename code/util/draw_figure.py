@@ -33,17 +33,31 @@ def draw(ax, img, title, norm):
     ax.set_xticks([])
     ax.set_yticks([])
 
-def draw_some(*arg, shape=None):
+def draw_some(*arg, shape=None, origin=False):
     n = len(arg)
-    wide, height = 1e9, 1e9
-    for i in range(n):
-        height = min(height, arg[i][0].shape[0]/150)
-        wide = min(wide, arg[i][0].shape[1]/150)
     if shape is None:
         shape = [1, n]
-    fig, axes = plt.subplots(*shape, figsize=(wide*shape[1], height*shape[0]))
-    axes = np.array(axes).reshape([-1])
+    wide, height = 0, 0
+    sum_wide = 0
+    fact = 150
     for i in range(n):
-        draw(axes[i], *(list(arg[i]) + (3 - len(arg[i])) * [None]))
+        h, w = arg[i][0].shape[0:2]
+        height = max(height, h/fact)
+        wide = max(wide, w/fact)
+        sum_wide += w
+    figsize = (wide * shape[1], height * shape[0])
+    if origin:  # 根据原始图像大小进行绘图，只能绘制一行
+        fig = plt.figure(figsize=figsize)
+        now_wide, space, sum_fig = 0.05, 0.1 / n, 0.8
+        for i in range(n):
+            k = arg[i][0].shape[1] / sum_wide
+            ax = plt.axes([now_wide, 0.05, k * sum_fig, 0.8])
+            draw(ax, *(list(arg[i]) + (3 - len(arg[i])) * [None]))
+            now_wide += k * sum_fig + space
+    else:
+        fig, axes = plt.subplots(*shape, figsize=figsize)
+        axes = np.array(axes).reshape([-1])
+        for i in range(n):
+            draw(axes[i], *(list(arg[i]) + (3 - len(arg[i])) * [None]))
     fig.tight_layout()
     fig.show()
