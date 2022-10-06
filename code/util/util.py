@@ -19,6 +19,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+from tqdm import tqdm
 
 def img_open(fname):
     img = np.array(Image.open(fname))
@@ -28,14 +29,24 @@ def img_open(fname):
     img_gray = img_gray.astype(np.float64) / 256
     return img, img_gray
 
+def img_change(img):
+    img_RGB = Image.fromarray(img).convert('RGB')
+    img_gray = img_RGB.convert('L')
+    return np.expand_dims(np.array(img_RGB), -1).astype(np.float64) / 256, \
+           np.expand_dims(np.array(img_gray), -1).astype(np.float64) / 256
+
 pi = np.pi
-def gauss(x, y, sigma, dim=2):
+def gauss(x, y, sigma, dim=2):  # Gauss函数
     sigma_2 = sigma * sigma
     if dim == 2:
         return 1 / (2 * pi * sigma_2) * np.exp(-(x*x + y*y) / (2 * sigma_2))
     return 1 / (np.sqrt(2 * pi) * sigma) * np.exp(-(x*x) / (2 * sigma_2))
 
-def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k/2的高斯滤波器
+def gauss_partial(x, y, sigma, d=0):  # 二维Gauss函数偏导，d为偏导对象
+    pos = [x, y]
+    return -pos[d] / (2*np.pi*np.power(sigma, 4)) * np.exp(-(x*x + y*y)/(2*sigma*sigma))
+
+def gauss_filter(k, dim=2, derivative=None):  # 返回一个2k+1*2k+1的sigma=k/2的高斯滤波器
     n = 2 * k + 1
     filter = np.zeros([n, n, 1])
     for i in range(n):
@@ -44,6 +55,10 @@ def gauss_filter(k, dim=2):  # 返回一个2k+1*2k+1的sigma=k/2的高斯滤波�
                 filter[i, j, 0] = gauss(j-k, 0, sigma=k/2, dim=1)
             elif dim == 2:
                 filter[i, j, 0] = gauss(i-k, j-k, k/2)
+            if derivative is not None:
+                filter[i, j, 0] = gauss_partial(i - k, j - k, k / 2, d=derivative)
+    if derivative is not None:  # 偏导结果，无需正规
+        return filter
     return filter / np.sum(filter)
 
 def gauss_filter_fixed(n, m, sigma):
@@ -62,7 +77,7 @@ def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向�
     n, m, c = img.shape
     lx = (dx + 1) // 2  # 左侧填充量(向上取整)
     uy = (dy + 1) // 2  # 上侧填充量(向上取整)
-    new_img = np.zeros([n + dx, m + dy, c])
+    new_img = np.zeros([n + int(dx), m + int(dy), c])
     for i in range(n + dx):
         for j in range(m + dy):
             id1 = -1 if i < lx else (1 if i >= n + lx else 0)
@@ -107,18 +122,17 @@ def padding(img, dx, dy, mode=0):  # 原始图像img，横向增加dx，竖向�
                             new_img[i, j, :] = symmetric((i-lx, j-uy), (id1, j-uy))
     return new_img
 
-def conv(img, filter, mode=0, stride=1):
+def conv(img, filter, mode=0, stride=1, padding_mode=0):
     if img.ndim == 2:
         img = np.expand_dims(img, -1)
     n, m, c = img.shape
     a, b = filter.shape[0:2]
     shape = np.array(img.shape).astype(int)
     shape[0:2] //= stride
-    print(shape)
     output = np.zeros(shape)
     if mode == 0:
-        img = padding(img, a-1, b-1)
-    for i in range(0,n,stride):
+        img = padding(img, a-1, b-1, padding_mode)
+    for i in tqdm(range(0,n,stride)):
         for j in range(0,m,stride):
             for k in range(c):
                 output[i//stride, j//stride, k] = np.sum(img[i:i+a, j:j+b, k] * filter[:,:,0])

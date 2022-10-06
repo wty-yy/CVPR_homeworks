@@ -9,7 +9,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def draw(ax, img, title, norm):
+def draw(ax, img, title, norm, cmap=None):
     if img.ndim == 2:
         img = np.expand_dims(img, -1)
     if img.min() < 0 or img.max() > 1:
@@ -27,7 +27,8 @@ def draw(ax, img, title, norm):
             plt.hist(img.reshape([-1]))
             img[img > 0.005] += 0.5 - img.mean()
             img[img > 1] = 1
-    cmap = 'gray' if img.shape[2] == 1 else None
+    if cmap is None:
+        cmap = 'gray' if img.shape[2] == 1 else None
     ax.imshow(img, cmap=cmap)
     ax.set_title(title)
     ax.set_xticks([])
@@ -37,7 +38,7 @@ def draw_some(*arg, shape=None, origin=False):
     n = len(arg)
     if shape is None:
         shape = [1, n]
-    wide, height = 0, 0
+    wide, height = 3, 3  # 图像输出最小大小不能小于300px
     sum_wide = 0
     fact = 150
     for i in range(n):
@@ -59,5 +60,6 @@ def draw_some(*arg, shape=None, origin=False):
         axes = np.array(axes).reshape([-1])
         for i in range(n):
             draw(axes[i], *(list(arg[i]) + (3 - len(arg[i])) * [None]))
-    fig.tight_layout()
+        fig.tight_layout()
+    fig.savefig('tmp.png', dpi=600)
     fig.show()
