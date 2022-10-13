@@ -326,7 +326,7 @@ n, m, c = img.shape
 # draw_some(*[(magnitude[i], '幅度图'+title[i], 'line') for i in range(len(sigmas))],
 #           *[(orientation[i], '方向图'+title[i], 'clip', 'CMRmap') for i in range(len(sigmas))], shape=(2, 4))
 # Canny边缘检测算法
-# canny(img_gray, 0.5, high_per=92, low_per=50)
+canny(img_gray, 0.5, high_per=92, low_per=50)
 # Harris角点检测
 # corner = harris(img_gray, 0.5, 0.05, show_img=img)
 # sigma = 0.5
@@ -335,4 +335,3 @@ n, m, c = img.shape
 # img2, img_gray2 = img_open('../figure/corner_test2.png')
 # corner2 = harris(img_gray2, sigma, 0.05, show_img=img2)
 # draw_some((corner1, f'窗口大小${int(4*sigma+1)}\\times{int(4*sigma+1)}$'), (corner2, f'窗口大小${int(4*sigma+1)}\\times{int(4*sigma+1)}$'))
-# 
