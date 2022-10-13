@@ -10,7 +10,7 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from queue import Queue
+from queue import Queue, PriorityQueue
 
 sys.path.append(os.path.split(sys.path[0])[0])
 from util.util import *
@@ -22,11 +22,13 @@ class Transform:
     def __init__(self, img):
         self.img = img
         self.n, self.m, self.c = img.shape
+
     def translation(self, t1, t2):  # 平移变换
         return np.array([[1, 0, t1], [0, 1, t2], [0, 0, 1]]).astype('float64')
 
     def rotation(self, theta):  # 旋转变换
-        return np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]).astype('float64')
+        return np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta), np.cos(theta), 0], [0, 0, 1]]).astype(
+            'float64')
 
     def euclidean(self, theta, t1, t2):  # 欧式变换，旋转+平移
         ret = self.rotation(theta)
@@ -43,7 +45,7 @@ class Transform:
 
     def transform(self, T, tomid=False):
         if tomid:
-            mid = np.array([self.n/2, self.m/2, 1]).reshape([-1, 1])
+            mid = np.array([self.n / 2, self.m / 2, 1]).reshape([-1, 1])
             T[:, 2] += (mid - T @ mid).flatten()
         invT = np.linalg.inv(T)
         output = np.zeros_like(img)
@@ -56,8 +58,10 @@ class Transform:
 
 def bilinear_interpolate(img, x, y):  # 双线性插值
     n, m, c = img.shape
+
     def calc_area(x0, y0):
         return abs(x - x0) * abs(y - y0)
+
     if x < 0 or x > n - 1 or y < 0 or y > m - 1:
         return 0
     x0, y0 = int(x), int(y)
@@ -69,9 +73,11 @@ def bilinear_interpolate(img, x, y):  # 双线性插值
         ret += img[x0 + pos[3 - i][0], y0 + pos[3 - i][1], :] * calc_area(x0 + pos[i][0], y0 + pos[i][1])
     return ret
 
+
 def down_resolution(img, k):  # 使用高斯核大小为2k+1x2k+1，降低1/2的分辨率
     filter = gauss_filter(2)
     return conv(img, filter, stride=2)
+
 
 def up_resolution(img, padding_mode=3):  # 使用高斯核大小为5x5，提高1/2的分辨率，默认使用边界镜像填充
     n, m, c = img.shape
@@ -80,25 +86,28 @@ def up_resolution(img, padding_mode=3):  # 使用高斯核大小为5x5，提高1
     out = np.zeros(shape)
     for i in range(n):
         for j in range(m):
-            out[i*2, j*2, :] = img[i, j, :]
+            out[i * 2, j * 2, :] = img[i, j, :]
     return conv(out, gauss_filter(5), padding_mode=padding_mode) * 4
+
 
 def sampling(img, stride):  # 对图像进行步长为stride的采样
     n, m, c = img.shape
-    out = np.zeros([n//stride, m//stride, c])
+    out = np.zeros([n // stride, m // stride, c])
     for i in range(0, n, stride):
         for j in range(0, m, stride):
-            out[i//stride, j//stride, :] = img[i, j, :]
+            out[i // stride, j // stride, :] = img[i, j, :]
     return out
 
+
 def img_gradient(img, sigma):  # 方差为sigma的一阶微分Gauss核，对图像做微分，返回x方向的梯度, y方向的梯度, 幅度图和相位图
-    x_filter = gauss_filter(int(sigma*2), derivative=0)
-    y_filter = gauss_filter(int(sigma*2), derivative=1)
+    x_filter = gauss_filter(int(sigma * 2), derivative=0)
+    y_filter = gauss_filter(int(sigma * 2), derivative=1)
     x_img = conv(img, x_filter, padding_mode=3)
     y_img = conv(img, y_filter, padding_mode=3)
     magnitude = np.sqrt(np.power(x_img, 2) + np.power(y_img, 2))
     orientation = np.arctan2(x_img, y_img)
     return x_img, y_img, magnitude, orientation
+
 
 def NMS_derivative(img, sigma, show_info=True):
     n, m, c = img.shape
@@ -120,17 +129,66 @@ def NMS_derivative(img, sigma, show_info=True):
         print(f'NMS过程共计删除{del_cnt}个像素点，占比{del_cnt / (n * m):%}')
     return magnitude, orientation, nms
 
-def canny(img, sigma, show_info=True):  # Canny边缘检测算法，sigma为Gauss核方差，show为是否显示计算过程
+
+def canny(img, sigma, high_per=92, low_per=50, show_info=True):  # Canny边缘检测算法，sigma为Gauss核方差，show为是否显示计算过程
+    img = conv(img, gauss_filter(2), padding_mode=3)
     n, m, c = img.shape
-    magnitude, orientation, nms = NMS(img, sigma, show_info)
-    high = np.percentile(magnitude, 95)  # 高阈值
-    low = np.percentile(magnitude, 90)  # 低阈值
+    magnitude, orientation, nms = NMS_derivative(img, sigma, show_info)
+    plt.hist(magnitude.flatten())
+    plt.show()
+    high = np.percentile(magnitude, high_per)  # 高阈值
+    low = np.percentile(magnitude, low_per)  # 低阈值
     high_img = magnitude * (magnitude >= high)
     low_img = magnitude * (magnitude >= low)
-    ret = np.zeros_like(img)
+    edge = np.zeros_like(img)
+    # ret = np.full_like(img, 1) * (magnitude >= high)
     dx = [-1, -1, -1, 0, 0, 1, 1, 1]  # 8个方向
     dy = [-1, 0, 1, -1, 1, -1, 0, 1]
-    total_connect = 0
+
+    import sys
+    sys.setrecursionlimit(1000000)
+
+    def add_edge(x):
+        edge[x[0], x[1], 0] = 1
+
+    def connect(x, y):
+        fa = [x]
+        dx = y - x
+        add_edge(y)
+        if np.sum(np.abs(dx)) == 2:
+            x1 = x + [dx[0], 0]
+            x2 = x + [0, dx[1]]
+            m = lambda x: magnitude[x[0], x[1], 0]
+            if m(x1) < m(x2):
+                x1, x2 = x2, x1
+            fa.append(x1)
+            add_edge(x1)
+        return fa
+
+    def dfs(x, fa1, fa2):  # 利用深搜进行边缘连接
+        next_set = PriorityQueue()
+        for i in range(8):
+            tx = x + np.array([dx[i], dy[i]])
+            if tx[0] < 0 or tx[0] >= n or tx[1] < 0 or tx[1] >= m or (tx.tolist() in np.array(fa1 + fa2).tolist()):
+                continue
+            if edge[tx[0], tx[1], 0] == 1:
+                connect(x, tx)
+                return
+            value = magnitude[tx[0], tx[1], 0]
+            if value >= low:
+                next_set.put(Point(tx, value))
+        flag = False
+        while not next_set.empty():
+            tmp = next_set.get()
+            nt, value = tmp.x, tmp.v
+            if value < high and flag:
+                break
+            if count_round(edge, nt) <= 2:
+                fa1, fa2 = connect(x, nt), fa1
+                dfs(nt, fa1, fa2)
+            flag = True
+            if value < high:
+                break
 
     def bfs(x, y):  # 利用广搜进行边缘连接
         count = 0
@@ -138,28 +196,51 @@ def canny(img, sigma, show_info=True):  # Canny边缘检测算法，sigma为Gaus
         q.put((x, y))
         while not q.empty():
             x, y = q.get()
-            if ret[x, y, 0] != 0:
+            if edge[x, y, 0] != 0:
                 continue
-            ret[x, y, 0] = 1
+            edge[x, y, 0] = 1
             count += 1
             for i in range(8):
                 tx, ty = x + dx[i], y + dy[i]
-                if tx < 0 or tx > n-1 or ty < 0 or ty > m-1:
+                if tx < 0 or tx > n - 1 or ty < 0 or ty > m - 1:
                     continue
-                if low_img[tx, ty] != 0:
+                if low_img[tx, ty, 0] != 0:
                     q.put((tx, ty))
         return count
+
+    pq = PriorityQueue()
+
+    class Point:
+        def __init__(self, x, value):
+            self.x = x
+            self.v = value
+
+        def __lt__(self, other):
+            return self.v > other.v
 
     for i in tqdm(range(n)):
         for j in range(m):
             for k in range(c):
                 if high_img[i, j, k] != 0:
-                    total_connect += bfs(i, j)
+                    pq.put(Point(np.array([i, j]), high_img[i, j, k]))
+    while not pq.empty():
+        x = pq.get().x
+        if count_round(edge, x) <= 2:
+            add_edge(x)
+            dfs(x, [], [])
+    tmp = edge.copy()
+    for i in range(n):
+        for j in range(m):
+            if edge[i, j, 0] != 0 and count_round(tmp, np.array([i, j]), mode=4) <= 1:
+                # print(f'删除凸点{i} {j}')
+                edge[i, j, 0] = 0
+
     if show_info:
-        print(f'边缘连接过程共计连接{total_connect}个像素点，占比{total_connect/(n*m):%}')
+        print(f'边缘连接过程共计连接{np.sum(edge)}个像素点，占比{np.sum(edge) / (n * m):%}')
         draw_some((magnitude, '幅度图', 'line'), (orientation, '方向图', 'clip', 'hot'), (nms, 'NMS', 'line'),
-                  (high_img, '高阈值处理', 'line'), (low_img, '低阈值处理', 'line'), (ret, 'Canny边缘检测结果', 'line'), shape=(2, 3))
-    return ret
+                  (high_img, f'高阈值${high_per}\%$处理', 'line'), (low_img, f'低阈值${low_per}\%$处理', 'line'), (edge, 'Canny边缘检测结果', 'line'), shape=(2, 3))
+    return edge
+
 
 def draw_dot(img, x, y):
     dx = [-1, -1, -1, 0, 0, 0, 1, 1, 1]  # 9个方向
@@ -169,6 +250,7 @@ def draw_dot(img, x, y):
         if tx < 0 or tx > n - 1 or ty < 0 or ty > m - 1:
             continue
         img[tx, ty, :] = np.array([0, 1, 0])
+
 
 def harris(img, sigma, alpha, k=5, show_img=None):  # img:图像，sigma:Gauss核方差，alpha:响应函数系数，k:NMS大小2k+1x2k+1
     d_x, d_y, _, _ = img_gradient(img, 0.5)
@@ -182,13 +264,13 @@ def harris(img, sigma, alpha, k=5, show_img=None):  # img:图像，sigma:Gauss�
     corner = img * (R > np.percentile(R, 98))
     nms = np.zeros_like(corner)
     n, m, c = img.shape
-    pad = padding(corner, 2*k, 2*k, mode=0)
+    pad = padding(corner, 2 * k, 2 * k, mode=0)
     for i in range(n):
         for j in range(m):
             for o in range(c):
                 # if corner[i, j, o] != 0:
                 #     print(corner[i, j, o], np.max(pad[i:i+2*k, j:j+2*k, o]))
-                if corner[i, j, o] == np.max(pad[i:i+2*k, j:j+2*k, o]) and corner[i, j, o] != 0:
+                if corner[i, j, o] == np.max(pad[i:i + 2 * k, j:j + 2 * k, o]) and corner[i, j, o] != 0:
                     nms[i, j, o] = 1
                     if show_img is not None:
                         if len(show_img.shape) == 1:
@@ -197,7 +279,8 @@ def harris(img, sigma, alpha, k=5, show_img=None):  # img:图像，sigma:Gauss�
     draw_some((img, '原图'), (R, '响应函数', 'upper'), (nms, '98%阈值分离+NMS'), (show_img, '标记角点'))
     return show_img
 
-img, img_gray = img_open('../figure/fox1.png')
+# img, img_gray = img_open('../figure/edge_test.png')
+img, img_gray = img_open('../figure/fox2.png')
 n, m, c = img.shape
 # draw_some((img, '原图'), (padding(img, 200, 200, mode=0), '零填充'),
 #           (padding(img, 200, 200, mode=1), '边界环绕'),
@@ -242,13 +325,14 @@ n, m, c = img.shape
 #     title.append(f'$\sigma={sigma}$')
 # draw_some(*[(magnitude[i], '幅度图'+title[i], 'line') for i in range(len(sigmas))],
 #           *[(orientation[i], '方向图'+title[i], 'clip', 'CMRmap') for i in range(len(sigmas))], shape=(2, 4))
-# # Canny边缘检测算法
-# canny(img_gray, 0.5)
+# Canny边缘检测算法
+# canny(img_gray, 0.5, high_per=92, low_per=50)
 # Harris角点检测
 # corner = harris(img_gray, 0.5, 0.05, show_img=img)
-sigma = 0.5
-img1, img_gray1 = img_open('../figure/corner_test1.png')
-corner1 = harris(img_gray1, sigma, 0.05, show_img=img1)
-img2, img_gray2 = img_open('../figure/corner_test2.png')
-corner2 = harris(img_gray2, sigma, 0.05, show_img=img2)
-draw_some((corner1, f'窗口大小${int(4*sigma+1)}\\times{int(4*sigma+1)}$'), (corner2, f'窗口大小${int(4*sigma+1)}\\times{int(4*sigma+1)}$'))
+# sigma = 0.5
+# img1, img_gray1 = img_open('../figure/corner_test1.png')
+# corner1 = harris(img_gray1, sigma, 0.05, show_img=img1)
+# img2, img_gray2 = img_open('../figure/corner_test2.png')
+# corner2 = harris(img_gray2, sigma, 0.05, show_img=img2)
+# draw_some((corner1, f'窗口大小${int(4*sigma+1)}\\times{int(4*sigma+1)}$'), (corner2, f'窗口大小${int(4*sigma+1)}\\times{int(4*sigma+1)}$'))
+# 

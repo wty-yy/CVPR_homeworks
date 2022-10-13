@@ -15,11 +15,13 @@
         mode=2: 边界复制
         mode=3: 镜像边界
     cov(img, filter, mode=0): 卷积函数，原始图像img, 卷积核filter，mode=0等宽卷积（其他卷积还没用到）
+    count_round(img, x, mode=8): 统计img图片中x坐标周围一圈非零元素个数，mode=4,8,9表示统计周围的个数
 """
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm import tqdm
+import util.const as const
 
 def img_open(fname):
     img = np.array(Image.open(fname))
@@ -154,3 +156,14 @@ def conv1(img, filter, mode=0):
                         output[i][j][k] += img[i+u][j+v][k] * filter[u][v][0]
     return np.array(output)
 
+def count_round(img, x, mode=8):
+    # mode=4,8,9 表示统计周围一圈点的个数
+    n, m, c = img.shape
+    count = 0
+    for dir in const.direction[mode]:
+        tx = x + dir
+        if tx[0] < 0 or tx[0] >= n or tx[1] < 0 or tx[1] >= m:
+            continue
+        if img[tx[0], tx[1]] != np.zeros(c):
+            count += 1
+    return count
