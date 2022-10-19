@@ -34,7 +34,9 @@
 $$
 \boldsymbol{t} = \boldsymbol{x}_{mid} - T\boldsymbol{x}_{mid},\quad T_{translation}=\left[\begin{matrix}1&0&t_1\\ 0&1&t_2\\0&0&1\end{matrix}\right]
 $$
-为了保证输出效果，处平移操作和旋转操作外，其他操作都进行平移.
+为了保证输出效果，处平移操作和旋转操作外，其他操作都进行平移. 正向变换的结果有非常多的空洞，而反向变换加双线性插值效果好得多.
+
+![tmp](./CVPR2_note.figure/向前变换.png)
 
 ![image-20221005212943808](./CVPR2_note.figure/几何变换实验.png)
 

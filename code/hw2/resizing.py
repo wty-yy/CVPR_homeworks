@@ -43,16 +43,27 @@ class Transform:
     def affine(self, a11, a12, a21, a22, t1, t2):  # 仿射变换
         return np.array([[a11, a12, t1], [a21, a22, t2], [0, 0, 1]]).astype('float64')
 
-    def transform(self, T, tomid=False):
+    def transform(self, T, tomid=False, inverse=True):
         if tomid:
             mid = np.array([self.n / 2, self.m / 2, 1]).reshape([-1, 1])
             T[:, 2] += (mid - T @ mid).flatten()
         invT = np.linalg.inv(T)
         output = np.zeros_like(img)
-        for i in tqdm(range(self.n)):
-            for j in range(self.m):
-                x, y = (invT @ np.array([i, j, 1]).reshape([-1, 1]))[0:2, 0]
-                output[i, j, :] = bilinear_interpolate(self.img, x, y)
+        if inverse:
+            for i in tqdm(range(self.n)):
+                for j in range(self.m):
+                    x, y = (invT @ np.array([i, j, 1]).reshape([-1, 1]))[0:2, 0]
+                    # output[i, j, :] = bilinear_interpolate(self.img, x, y)
+                    output[i, j, :] = near_interpolate(self.img, x, y)
+        else:
+            for i in tqdm(range(self.n)):
+                for j in range(self.m):
+                    x, y = (T @ np.array([i, j, 1]).reshape([-1, 1]))[0:2, 0]
+                    x, y = int(x), int(y)
+                    if x < 0 or x >= n or y < 0 or y >= m:
+                        continue
+                    # output[i, j, :] = bilinear_interpolate(self.img, x, y)
+                    output[x, y, :] = near_interpolate(self.img, i, j)
         return output
 
 
@@ -72,6 +83,14 @@ def bilinear_interpolate(img, x, y):  # 双线性插值
     for i in range(4):
         ret += img[x0 + pos[3 - i][0], y0 + pos[3 - i][1], :] * calc_area(x0 + pos[i][0], y0 + pos[i][1])
     return ret
+
+
+def near_interpolate(img, x, y):
+    n, m, c = img.shape
+    x, y = int(x), int(y)
+    if x < 0 or x >= n or y < 0 or y >= m:
+        return np.zeros(c)
+    return img[x, y]
 
 
 def down_resolution(img, k):  # 使用高斯核大小为2k+1x2k+1，降低1/2的分辨率
@@ -287,15 +306,17 @@ n, m, c = img.shape
 #           (padding(img, 200, 200, mode=2), '边界复制'),
 #           (padding(img, 200, 200, mode=3), '边界镜像'))
 # 几何变换
-# t = Transform(img)
-# draw_some((img, '原图'), (t.transform(t.translation(n/4, m/4)), '平移(N/4,M/4)'),
-#           (t.transform(t.rotation(np.pi/6)), '旋转$\pi/6$'),
-#           (t.transform(t.euclidean(np.pi/4, 0, 0), tomid=True), '旋转$\pi/4$'),
-#           (t.transform(t.similitude(0.5, np.pi/4, 0, 0), tomid=True), '旋转$\pi/4$'),
-#           (t.transform(t.similitude(2, np.pi/4, 0, 0), tomid=True), '缩放2，旋转$\pi/4$'),
-#           (t.transform(t.affine(0.5, 1, 1, 0.5, 0, 0), tomid=True), '仿射a=[0.5,1,1,0.5]'),
-#           (t.transform(t.affine(-0.5, 1, -1, 0.5, 0, 0), tomid=True), '仿射a=[-0.5,1,-1,0.5]'),
-#           (t.transform(t.affine(0.5, 1, 1, -0.5, 0, 0), tomid=True), '仿射a=[0.5,1,1,-0.5]'), shape=(3, 3))
+t = Transform(img)
+# draw_some((img, '原图'), (t.transform(t.similitude(1.5, 0, 0, 0), tomid=True, inverse=False), '放大1.5'),
+#           (t.transform(t.similitude(2, 0, 0, 0), tomid=True, inverse=False), '放大2'))
+draw_some((img, '原图'), (t.transform(t.translation(n/4, m/4)), '平移(N/4,M/4)'),
+          (t.transform(t.rotation(np.pi/6)), '旋转$\pi/6$'),
+          (t.transform(t.euclidean(np.pi/4, 0, 0), tomid=True), '旋转$\pi/4$'),
+          (t.transform(t.similitude(0.5, np.pi/4, 0, 0), tomid=True), '缩放1/2，旋转$\pi/4$'),
+          (t.transform(t.similitude(2, np.pi/4, 0, 0), tomid=True), '缩放2，旋转$\pi/4$'),
+          (t.transform(t.affine(0.5, 1, 1, 0.5, 0, 0), tomid=True), '仿射a=[0.5,1,1,0.5]'),
+          (t.transform(t.affine(-0.5, 1, -1, 0.5, 0, 0), tomid=True), '仿射a=[-0.5,1,-1,0.5]'),
+          (t.transform(t.affine(0.5, 1, 1, -0.5, 0, 0), tomid=True), '仿射a=[0.5,1,1,-0.5]'), shape=(3, 3))
 # # Gauss金字塔
 # G1 = down_resolution(img, 2)
 # G2 = down_resolution(G1, 2)
@@ -315,7 +336,9 @@ n, m, c = img.shape
 # gauss_img = conv(img, gauss_filter(2), padding_mode=3)
 # draw_some((gauss_img, '原图'), (sampling(gauss_img, 2), '1/2'), (sampling(gauss_img, 4), '1/4'), (sampling(gauss_img, 8), '1/8'))
 # # Gauss一阶微分
+# filter = gauss_filter(6, derivative=0)
 # draw_some((gauss_filter(6, derivative=0), 'x轴偏导', 'line'), (gauss_filter(6, derivative=1), 'y轴偏导', 'line'))
+# draw_some((img_gray, '原图'), (conv(img_gray, filter, padding_mode=3), 'x偏导line'))
 # sigmas = [0.5, 1, 2, 5]
 # magnitude, orientation, title = [], [], []
 # for sigma in sigmas:
@@ -326,7 +349,7 @@ n, m, c = img.shape
 # draw_some(*[(magnitude[i], '幅度图'+title[i], 'line') for i in range(len(sigmas))],
 #           *[(orientation[i], '方向图'+title[i], 'clip', 'CMRmap') for i in range(len(sigmas))], shape=(2, 4))
 # Canny边缘检测算法
-canny(img_gray, 0.5, high_per=92, low_per=50)
+# canny(img_gray, 0.5, high_per=92, low_per=50)
 # Harris角点检测
 # corner = harris(img_gray, 0.5, 0.05, show_img=img)
 # sigma = 0.5
