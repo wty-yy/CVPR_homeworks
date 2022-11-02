@@ -61,5 +61,5 @@ def draw_some(*arg, shape=None, origin=False):
         for i in range(n):
             draw(axes[i], *(list(arg[i]) + (3 - len(arg[i])) * [None]))
         fig.tight_layout()
-    fig.savefig('tmp.png', dpi=100)
+    fig.savefig('tmp.png', dpi=300)
     fig.show()
