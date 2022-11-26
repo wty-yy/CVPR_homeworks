@@ -17,14 +17,16 @@ from tqdm import tqdm
 
 def transform(img, H):
     H = H.T
-    output = np.zeros([361, 331, 1])
     n, m, c = img.shape
-    for i in tqdm(range(331)):
-        for j in range(361):
-            x, y, z = (np.array([i, j, 1]) @ H)
+    mid = np.array([n/2, m/2, 0])
+    H[2, :] += mid @ H - mid
+    output = np.zeros(img.shape)
+    for i in tqdm(range(n)):
+        for j in range(m):
+            x, y, z = (np.array([j, i, 1]) @ H)
             x /= z  # 正则化
             y /= z
-            output[j, i, :] = bilinear_interpolate(img, y, x)  # 利用双线性插值
+            output[i, j, :] = bilinear_interpolate(img, y, x)  # 利用双线性插值
     return output
 
 def open_img(fname):
@@ -40,6 +42,6 @@ H1 = np.array([[-0.2204, 0.8074, 166.6303],
 H3 = np.array([[-0.3254, 0.8275, 197.7143],
                [0.5622, 0.1381, 95.3857],
                [-0.0006, -0.0000, 1.0000]])
-# draw_some((img1, 'Image1', 'line'), (transform(img1, H1), '逆变换', 'line'))
-draw_some((img3, 'Image3', 'line'), (transform(img3, H3), '逆变换', 'line'))
+draw_some((img1, 'Image1', 'line'), (transform(img1, H1), '逆变换', 'line'))
+# draw_some((img3, 'Image3', 'line'), (transform(img3, H3), '逆变换', 'line'))
 
