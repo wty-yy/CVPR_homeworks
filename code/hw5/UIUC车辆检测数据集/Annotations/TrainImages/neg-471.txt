@@ -1,0 +1,15 @@
+# PASCAL Annotation Version 1.00
+
+Image filename : "UIUC/PNGImages/TrainImages/neg-471.png"
+Image size (X x Y x C) : 100 x 40 x 1
+Database : "UIUC Image Database for Car Detection"
+Objects with ground truth : 1 { "PASbackground" }
+
+# Note that there might be other objects in the image
+# for which ground truth data has not been provided.
+
+# Top left pixel co-ordinates : (1, 1)
+
+# Details for object 1 ("PASbackground")
+Original label for object 1 "PASbackground" : "Not carSide"
+Bounding box for object 1 "PASbackground" (Xmin, Ymin) - (Xmax, Ymax) : (1, 1) - (100, 40)
