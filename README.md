@@ -24,10 +24,14 @@
 
 ![efficientnet_dropout](./code/hw4/figure_logs/efficientnet_dropout.png)
 
-### Homework5
+### Homework5 目标检测
 
-PASCAL VOC 2012 Dataset作为数据集，传统目标检测方法与基于深度学习的目标检测方法比较
+提取Hog特征，并使用SVM进行分类，最后使用mAP进行评分.
 
-- [ ] 复现传统目标检测方法-可变形部件模型（DPM）（https://cs.brown.edu/people/pfelzens/latent-release4/）
-- [ ] 分析深度学习模型用于目标检测的方法与DPM的关系（Ross Girshick, Forrest Iandola, Trevor Darrell, Jitendra Malik, “Deformable Part Models are Convolutional Neural Networks”）
-- [ ] 完成一种基于深度学习的目标检测方法
+特征提取及SVM模型训练：https://github.com/bikz05/object-detector/tree/master/object-detector，mAP评价目标检测器：https://github.com/Cartucho/mAP
+
+![hog特征提取](./README.figure/hog特征提取.png)
+
+上排图像从右到左为 Gauss 金字塔从大到小生成的结果，红框为滑动窗口过程中检测到的结果，左下角为全部过程中检测结果，右下角蓝框为 nms 处理重叠后的结果.
+
+![detections](./README.figure/detections.png)
