@@ -32,6 +32,12 @@ def sliding_window(image, window_size, step_size):
         for x in range(0, image.shape[1], step_size[0]):
             yield x, y, image[y:y+window_size[1], x:x+window_size[0]]
 
+def cvtColor(clone):  # 转化图像为三通道色彩，绘制彩色边框
+    try:
+        clone = cv2.cvtColor(clone, cv2.COLOR_GRAY2RGB)
+    except:
+        clone = cv2.cvtColor(clone.astype(np.float32), cv2.COLOR_GRAY2RGB)
+    return clone
 
 if __name__ == "__main__":
     # Parse the command line arguments
@@ -93,26 +99,29 @@ if __name__ == "__main__":
             # of the sliding window
             if visualize_det:
                 clone = im_scaled.copy()
+                clone = cvtColor(clone)
                 for x1, y1, _, _, _  in cd:
                     # Draw the detections at this scale
                     x1_02 = int(x1/(downscale**scale))
                     y1_02 = int(y1/(downscale**scale))
                     cv2.rectangle(clone, (x1_02, y1_02), (x1_02 + im_window.shape[1], y1_02 +
-                        im_window.shape[0]), (0, 0, 0), thickness=2)
+                        im_window.shape[0]), (0, 0, 255), thickness=2)
                 cv2.rectangle(clone, (x, y), (x + im_window.shape[1], y +
                     im_window.shape[0]), (255, 255, 255), thickness=2)
-                cv2.imshow("Sliding Window in Progress", clone)
+                cv2.imshow(f"Sliding Window in Progress {scale}", clone)
                 cv2.waitKey(30)
         # Move the the next scale
         scale+=1
 
     # Display the results before performing NMS
     clone = im.copy()
+    clone = cvtColor(clone)
+    im = cvtColor(im)
     for (x_tl, y_tl, _, w, h) in detections:
         # Draw the detections
-        cv2.rectangle(im, (x_tl, y_tl), (x_tl+w, y_tl+h), (0, 0, 0), thickness=2)
+        cv2.rectangle(im, (x_tl, y_tl), (x_tl+w, y_tl+h), (0, 0, 255), thickness=2)
     cv2.imshow("Raw Detections before NMS", im)
-    cv2.waitKey()
+    # cv2.waitKey()
 
     # Perform Non Maxima Suppression
     detections = nms(detections, threshold)
@@ -120,6 +129,6 @@ if __name__ == "__main__":
     # Display the results after performing NMS
     for (x_tl, y_tl, _, w, h) in detections:
         # Draw the detections
-        cv2.rectangle(clone, (x_tl, y_tl), (x_tl+w,y_tl+h), (0, 0, 0), thickness=2)
+        cv2.rectangle(clone, (x_tl, y_tl), (x_tl+w,y_tl+h), (255, 0, 0), thickness=2)
     cv2.imshow("Final Detections after applying NMS", clone)
     cv2.waitKey()
